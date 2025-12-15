@@ -11,19 +11,23 @@ El cifrado Pigpen es un sistema de sustitución geométrica simple que reemplaza
 ```
 pigpen/
 ├── data/
-│   ├── classified/       # Imágenes clasificadas por letra (A-Z)
+│   ├── classified/          # Imágenes clasificadas por letra (A-Z)
 │   │   ├── A/
 │   │   ├── B/
 │   │   └── ...
-│   └── unclassified/     # Imágenes pendientes de clasificación
-├── models/               # Modelos entrenados
+│   ├── generated/           # Imágenes generadas sintéticamente
+│   ├── prueba/              # Imágenes de prueba con texto conocido
+│   └── unclassified/        # Imágenes pendientes de clasificación
+├── models/                  # Modelos entrenados
 ├── scripts/
-│   ├── segment_image.py  # Divide imágenes en caracteres individuales
-│   ├── train_model.py    # Entrena el modelo con imágenes clasificadas
-│   ├── decrypt_image.py  # Identifica y descifra texto en imágenes
-│   └── generate_data.py  # Genera imágenes para entrenamiento/evaluación
-├── utils/                # Funciones auxiliares
-└── requirements.txt      # Dependencias del proyecto
+│   ├── segment_image.py     # Divide imágenes en caracteres individuales
+│   ├── train_model.py       # Entrena el modelo con imágenes clasificadas
+│   ├── decrypt_image.py     # Identifica y descifra texto en imágenes
+│   ├── generate_data.py     # Genera imágenes para entrenamiento/evaluación
+│   └── create_test_images.py # Crea imágenes de prueba con texto conocido
+├── tests/                   # Pruebas unitarias del proyecto
+├── utils/                   # Funciones auxiliares
+└── requirements.txt         # Dependencias del proyecto
 ```
 
 ## Funcionalidades
@@ -60,6 +64,22 @@ Crea imágenes sintéticas de caracteres Pigpen para ampliar el conjunto de entr
 python scripts/generate_data.py --count 100
 ```
 
+### 5. Creación de Imágenes de Prueba (`create_test_images.py`)
+
+Genera imágenes de prueba con texto conocido concatenando caracteres de `data/classified`. Útil para validar el sistema de descifrado.
+
+```bash
+python scripts/create_test_images.py
+```
+
+Esto crea imágenes como:
+- Pangramas en español e inglés
+- Alfabeto completo (A-Z)
+- Mensajes en una y múltiples líneas
+- Frases cortas para pruebas rápidas
+
+Las imágenes se guardan en `data/prueba/` junto con documentación del texto esperado.
+
 ## Requisitos
 
 - Python 3.8+
@@ -83,6 +103,47 @@ pip install -r requirements.txt
 4. Entrena el modelo con `train_model.py`
 5. Evalúa y mejora el modelo según sea necesario
 6. Utiliza `decrypt_image.py` para descifrar nuevas imágenes
+
+## Pruebas y Validación
+
+### Pruebas Unitarias
+
+El proyecto incluye pruebas unitarias para validar las funcionalidades principales:
+
+```bash
+# Ejecutar todas las pruebas
+python -m unittest discover tests -v
+
+# O usar el script de pruebas
+python tests/run_tests.py
+```
+
+### Imágenes de Prueba
+
+El directorio `data/prueba/` contiene imágenes de prueba con texto conocido para validar el sistema:
+
+- **Pangramas:** Textos que contienen todas las letras del alfabeto
+- **Alfabeto completo:** A-Z en orden
+- **Mensajes multilínea:** Texto en varias líneas
+- **Frases cortas:** Para pruebas rápidas
+
+Para generar las imágenes de prueba:
+
+```bash
+python scripts/create_test_images.py
+```
+
+Para validar el sistema con estas imágenes:
+
+```bash
+# Probar segmentación
+python scripts/segment_image.py --input data/prueba/hello_world.png --debug
+
+# Probar descifrado (requiere modelo entrenado)
+python scripts/decrypt_image.py --model models/tu_modelo.pth --input data/prueba/pangrama_ingles.png
+```
+
+Consulta `data/prueba/README.md` para ver los textos esperados de cada imagen.
 
 ## Contribuciones
 

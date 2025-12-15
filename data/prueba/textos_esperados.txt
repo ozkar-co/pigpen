@@ -1,0 +1,129 @@
+# Textos Esperados - Imágenes de Prueba
+
+Este archivo contiene los textos esperados para cada imagen de prueba.
+Úsalo para validar los resultados del sistema de descifrado.
+
+## Formato
+
+```
+nombre_archivo.png|TEXTO ESPERADO
+```
+
+## Imágenes de Prueba
+
+```
+pangrama_espanol.png|EL VELOZ MURCIELAGO HINDU COMIA FELIZ CARDILLO Y KIWI
+pangrama_ingles.png|THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG
+hello_world.png|HELLO WORLD
+alfabeto.png|ABCDEFGHIJKLMNOPQRSTUVWXYZ
+frase_corta.png|DECODE THIS MESSAGE
+```
+
+## Mensaje Multilínea
+
+```
+mensaje_multilinea.png|PIGPEN CIPHER
+mensaje_multilinea.png|ALSO KNOWN AS
+mensaje_multilinea.png|MASONIC CIPHER
+```
+
+**Nota:** El mensaje multilínea contiene 3 líneas de texto. El sistema debería poder identificar cada línea por separado.
+
+## Uso en Scripts de Validación
+
+Puedes usar este archivo en scripts de Python para validar automáticamente los resultados:
+
+```python
+import os
+
+def load_expected_texts(filepath='data/prueba/textos_esperados.txt'):
+    """Carga los textos esperados desde el archivo."""
+    expected = {}
+    with open(filepath, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if '|' in line and not line.startswith('#'):
+                filename, text = line.split('|', 1)
+                if filename not in expected:
+                    expected[filename] = []
+                expected[filename].append(text)
+    return expected
+
+def validate_result(filename, decrypted_text, expected_texts):
+    """Valida el resultado del descifrado."""
+    if filename not in expected_texts:
+        return None, "No hay texto esperado para esta imagen"
+    
+    expected = expected_texts[filename]
+    
+    # Para imágenes de una línea
+    if len(expected) == 1:
+        expected_text = expected[0]
+        if decrypted_text == expected_text:
+            return True, "✓ Texto descifrado correctamente"
+        else:
+            return False, f"✗ Esperado: {expected_text}, Obtenido: {decrypted_text}"
+    
+    # Para imágenes multilínea
+    else:
+        decrypted_lines = decrypted_text.split('\n')
+        if decrypted_lines == expected:
+            return True, "✓ Todas las líneas descifradas correctamente"
+        else:
+            return False, f"✗ Esperado {len(expected)} líneas, obtenido {len(decrypted_lines)} líneas"
+
+# Ejemplo de uso
+expected_texts = load_expected_texts()
+success, message = validate_result('hello_world.png', 'HELLO WORLD', expected_texts)
+print(message)
+```
+
+## Métricas de Validación
+
+Para calcular la precisión del sistema, puedes usar:
+
+### Precisión de Caracteres
+
+```python
+def character_accuracy(expected, actual):
+    """Calcula la precisión a nivel de caracteres."""
+    if len(expected) == 0:
+        return 0.0
+    
+    correct = sum(1 for e, a in zip(expected, actual) if e == a)
+    total = len(expected)
+    return (correct / total) * 100
+
+# Ejemplo
+accuracy = character_accuracy("HELLO WORLD", "HELLO WORLD")
+print(f"Precisión: {accuracy:.2f}%")
+```
+
+### Distancia de Levenshtein
+
+```python
+def levenshtein_distance(s1, s2):
+    """Calcula la distancia de Levenshtein entre dos strings."""
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+    
+    if len(s2) == 0:
+        return len(s1)
+    
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            # Costo de inserción, eliminación o sustitución
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    
+    return previous_row[-1]
+
+# Ejemplo
+distance = levenshtein_distance("HELLO WORLD", "HELO WRLD")
+print(f"Distancia de Levenshtein: {distance}")
+```
