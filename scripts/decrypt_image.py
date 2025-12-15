@@ -120,28 +120,163 @@ def preprocess_image(image_path, threshold=0.5):
     
     return image, binary
 
-def find_characters(binary_image, min_area=100, padding=10):
-    """Encuentra los caracteres en la imagen binarizada."""
-    # Encontrar contornos
-    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+def detect_text_lines(binary_image, min_line_height=10):
+    """
+    Fase 1: Detecta las líneas o renglones que contienen texto usando proyección horizontal.
     
-    # Filtrar contornos por área y obtener bounding boxes
+    Args:
+        binary_image: Imagen binaria preprocesada
+        min_line_height: Altura mínima de una línea de texto
+        
+    Returns:
+        Lista de tuplas (y_inicio, y_fin) que representan las líneas de texto
+    """
+    # Calcular la proyección horizontal (suma de píxeles por fila)
+    horizontal_projection = np.sum(binary_image, axis=1)
+    
+    # Normalizar la proyección
+    if horizontal_projection.max() > 0:
+        horizontal_projection = horizontal_projection / horizontal_projection.max()
+    
+    # Encontrar regiones con contenido (umbral adaptativo)
+    threshold = 0.1  # Umbral para detectar presencia de contenido
+    content_rows = horizontal_projection > threshold
+    
+    # Encontrar límites de las líneas
+    lines = []
+    in_line = False
+    line_start = 0
+    
+    for i, has_content in enumerate(content_rows):
+        if has_content and not in_line:
+            # Inicio de una nueva línea
+            line_start = i
+            in_line = True
+        elif not has_content and in_line:
+            # Fin de la línea actual
+            line_end = i
+            if line_end - line_start >= min_line_height:
+                lines.append((line_start, line_end))
+            in_line = False
+    
+    # Manejar el caso donde la línea llega hasta el final
+    if in_line:
+        line_end = len(content_rows)
+        if line_end - line_start >= min_line_height:
+            lines.append((line_start, line_end))
+    
+    return lines
+
+def extract_characters_from_line(line_image, y_offset, min_char_width=10, padding=5):
+    """
+    Fase 2: Extrae caracteres individuales de una línea de texto usando proyección vertical.
+    Asume que los caracteres son aproximadamente cuadrados.
+    
+    Args:
+        line_image: Imagen binaria de una línea de texto
+        y_offset: Desplazamiento vertical de la línea en la imagen original
+        min_char_width: Ancho mínimo de un carácter
+        padding: Padding alrededor de cada carácter
+        
+    Returns:
+        Lista de tuplas (x, y, w, h) que representan las regiones de caracteres
+    """
+    # Calcular la proyección vertical (suma de píxeles por columna)
+    vertical_projection = np.sum(line_image, axis=0)
+    
+    # Normalizar la proyección
+    if vertical_projection.max() > 0:
+        vertical_projection = vertical_projection / vertical_projection.max()
+    
+    # Encontrar regiones con contenido
+    threshold = 0.1  # Umbral para detectar presencia de contenido
+    content_cols = vertical_projection > threshold
+    
+    # Encontrar límites de los caracteres
     char_regions = []
-    for contour in contours:
-        area = cv2.contourArea(contour)
-        if area >= min_area:
-            x, y, w, h = cv2.boundingRect(contour)
-            # Añadir padding
-            x = max(0, x - padding)
-            y = max(0, y - padding)
-            w = min(binary_image.shape[1] - x, w + 2 * padding)
-            h = min(binary_image.shape[0] - y, h + 2 * padding)
+    in_char = False
+    char_start = 0
+    
+    for i, has_content in enumerate(content_cols):
+        if has_content and not in_char:
+            # Inicio de un nuevo carácter
+            char_start = i
+            in_char = True
+        elif not has_content and in_char:
+            # Fin del carácter actual
+            char_end = i
+            if char_end - char_start >= min_char_width:
+                # Añadir padding
+                x = max(0, char_start - padding)
+                w = min(line_image.shape[1] - x, char_end - char_start + 2 * padding)
+                h = line_image.shape[0]
+                y = y_offset
+                char_regions.append((x, y, w, h))
+            in_char = False
+    
+    # Manejar el caso donde el carácter llega hasta el final
+    if in_char:
+        char_end = len(content_cols)
+        if char_end - char_start >= min_char_width:
+            x = max(0, char_start - padding)
+            w = min(line_image.shape[1] - x, char_end - char_start + 2 * padding)
+            h = line_image.shape[0]
+            y = y_offset
             char_regions.append((x, y, w, h))
     
-    # Ordenar regiones de izquierda a derecha
-    char_regions.sort(key=lambda r: r[0])
-    
     return char_regions
+
+def find_characters(binary_image, min_area=100, padding=10):
+    """
+    Encuentra los caracteres en la imagen binarizada usando un enfoque de dos fases:
+    Fase 1: Detecta líneas de texto
+    Fase 2: Extrae caracteres de cada línea
+    """
+    # Calcular el tamaño mínimo de línea basado en el área mínima
+    min_line_height = int(np.sqrt(min_area))
+    
+    # Fase 1: Detectar líneas de texto
+    lines = detect_text_lines(binary_image, min_line_height=min_line_height)
+    
+    if not lines:
+        # Si no se detectan líneas, usar el método de contornos como fallback
+        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        char_regions = []
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area >= min_area:
+                x, y, w, h = cv2.boundingRect(contour)
+                # Añadir padding
+                x = max(0, x - padding)
+                y = max(0, y - padding)
+                w = min(binary_image.shape[1] - x, w + 2 * padding)
+                h = min(binary_image.shape[0] - y, h + 2 * padding)
+                char_regions.append((x, y, w, h))
+        # Ordenar regiones de izquierda a derecha
+        char_regions.sort(key=lambda r: r[0])
+        return char_regions
+    
+    # Fase 2: Extraer caracteres de cada línea
+    all_char_regions = []
+    
+    for y_start, y_end in lines:
+        # Extraer la región de la línea
+        line_image = binary_image[y_start:y_end, :]
+        
+        # Extraer caracteres de esta línea
+        line_char_regions = extract_characters_from_line(
+            line_image,
+            y_offset=y_start,
+            min_char_width=min_line_height // 2,
+            padding=padding
+        )
+        
+        all_char_regions.extend(line_char_regions)
+    
+    # Ordenar por línea (y) y luego por posición horizontal (x)
+    all_char_regions.sort(key=lambda r: (r[1], r[0]))
+    
+    return all_char_regions
 
 def predict_character(model, image_tensor, classes, device):
     """Predice el carácter en una imagen tensor."""
