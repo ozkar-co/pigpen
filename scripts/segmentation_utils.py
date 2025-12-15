@@ -73,7 +73,11 @@ def extract_characters_from_line(line_image, y_offset=0, min_char_width=10,
         threshold: Umbral para detectar presencia de contenido (0-1)
         
     Returns:
-        Lista de tuplas (x, y, w, h) que representan las regiones de caracteres
+        Lista de tuplas (x, y, w, h) que representan las regiones de caracteres:
+        - x: coordenada x (columna) del inicio del carácter
+        - y: coordenada y (fila) del inicio del carácter
+        - w: ancho del carácter
+        - h: alto del carácter
     """
     # Calcular la proyección vertical (suma de píxeles por columna)
     vertical_projection = np.sum(line_image, axis=0)
@@ -99,9 +103,10 @@ def extract_characters_from_line(line_image, y_offset=0, min_char_width=10,
             # Fin del carácter actual
             char_end = i
             if char_end - char_start >= min_char_width:
-                # Añadir padding
+                # Añadir padding y asegurar límites válidos
                 x = max(0, char_start - padding)
-                w = min(line_image.shape[1] - x, char_end - char_start + 2 * padding)
+                x_end = min(line_image.shape[1], char_end + padding)
+                w = x_end - x
                 h = line_image.shape[0]
                 y = y_offset
                 char_regions.append((x, y, w, h))
@@ -112,7 +117,8 @@ def extract_characters_from_line(line_image, y_offset=0, min_char_width=10,
         char_end = len(content_cols)
         if char_end - char_start >= min_char_width:
             x = max(0, char_start - padding)
-            w = min(line_image.shape[1] - x, char_end - char_start + 2 * padding)
+            x_end = min(line_image.shape[1], char_end + padding)
+            w = x_end - x
             h = line_image.shape[0]
             y = y_offset
             char_regions.append((x, y, w, h))

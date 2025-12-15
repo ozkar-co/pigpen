@@ -102,7 +102,7 @@ def segment_characters(binary_image, min_size=20, padding=10, debug=False):
                 all_characters.append({
                     'image': char_img,
                     'line': line_idx,
-                    'bbox': (y, x, y+h, x+w)  # (minr, minc, maxr, maxc) format
+                    'bbox': (y, x, y+h, x+w)  # (minr, minc, maxr, maxc) format for compatibility
                 })
     
     if debug and all_characters:

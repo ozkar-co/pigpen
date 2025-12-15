@@ -126,6 +126,13 @@ def find_characters(binary_image, min_area=100, padding=10):
     Encuentra los caracteres en la imagen binarizada usando un enfoque de dos fases:
     Fase 1: Detecta líneas de texto
     Fase 2: Extrae caracteres de cada línea
+    
+    Returns:
+        Lista de tuplas (x, y, w, h) que representan las regiones de caracteres:
+        - x: coordenada x (columna) del inicio del carácter
+        - y: coordenada y (fila) del inicio del carácter  
+        - w: ancho del carácter
+        - h: alto del carácter
     """
     # Calcular el tamaño mínimo de línea basado en el área mínima
     min_line_height = int(np.sqrt(min_area))
