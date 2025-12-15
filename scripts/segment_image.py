@@ -12,7 +12,12 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 from datetime import datetime
-from segmentation_utils import detect_text_lines, extract_characters_from_line, CONTENT_THRESHOLD
+
+# Try to import from the same directory
+try:
+    from segmentation_utils import detect_text_lines, extract_characters_from_line, CONTENT_THRESHOLD
+except ImportError:
+    from scripts.segmentation_utils import detect_text_lines, extract_characters_from_line, CONTENT_THRESHOLD
 
 def parse_arguments():
     """Analiza los argumentos de línea de comandos."""
@@ -72,8 +77,34 @@ def segment_characters(binary_image, min_size=20, padding=10, debug=False):
     lines = detect_text_lines(binary_image, min_line_height=min_size, threshold=CONTENT_THRESHOLD)
     
     if not lines:
-        print("No se detectaron líneas de texto.")
-        return []
+        # Fallback: usar contornos cuando no se detectan líneas
+        # (útil para imágenes con una sola línea o pocos caracteres)
+        print("No se detectaron líneas de texto. Usando detección por contornos.")
+        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        all_characters = []
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area >= min_size:
+                x, y, w, h = cv2.boundingRect(contour)
+                # Añadir padding
+                x_padded = max(0, x - padding)
+                y_padded = max(0, y - padding)
+                w_padded = min(binary_image.shape[1] - x_padded, w + 2 * padding)
+                h_padded = min(binary_image.shape[0] - y_padded, h + 2 * padding)
+                
+                # Extraer el carácter
+                char_img = binary_image[y_padded:y_padded+h_padded, x_padded:x_padded+w_padded]
+                
+                if char_img.size > 0 and char_img.any():
+                    all_characters.append({
+                        'image': char_img,
+                        'bbox': (y_padded, x_padded, y_padded+h_padded, x_padded+w_padded)
+                    })
+        
+        # Ordenar por posición horizontal
+        all_characters.sort(key=lambda c: c['bbox'][1])
+        return all_characters
     
     print(f"Detectadas {len(lines)} líneas de texto.")
     
@@ -137,7 +168,8 @@ def segment_characters(binary_image, min_size=20, padding=10, debug=False):
         
         for i, char in enumerate(all_characters):
             axes[i].imshow(char['image'], cmap='gray')
-            axes[i].set_title(f'L{char["line"]+1}-C{i+1}')
+            line_label = f'L{char.get("line", 0)+1}-C{i+1}' if 'line' in char else f'C{i+1}'
+            axes[i].set_title(line_label)
             axes[i].axis('off')
         
         # Ocultar ejes vacíos

@@ -17,7 +17,12 @@ import torch
 import torch.nn as nn
 from torchvision import transforms, models
 from PIL import Image, ImageDraw, ImageFont
-from segmentation_utils import detect_text_lines, extract_characters_from_line, CONTENT_THRESHOLD
+
+# Try to import from the same directory
+try:
+    from segmentation_utils import detect_text_lines, extract_characters_from_line, CONTENT_THRESHOLD
+except ImportError:
+    from scripts.segmentation_utils import detect_text_lines, extract_characters_from_line, CONTENT_THRESHOLD
 
 # Mapa de conversión de índices a letras
 IDX_TO_CHAR = {i: chr(65 + i) for i in range(26)}  # A-Z

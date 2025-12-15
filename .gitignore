@@ -4,6 +4,24 @@ __pycache__/
 *$py.class
 *.so
 .Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
 # Virtual environments
 venv/
@@ -22,15 +40,30 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Project specific
-models/*.pth
-data/unclassified/
-*.log
-
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# Distribution / packaging
-build/
-dist/
-*.egg-info/
+# PyTorch
+*.pth
+*.pt
+!models/.gitkeep
+
+# Training artifacts
+models/
+!models/.gitkeep
+logs/
+runs/
+checkpoints/
+
+# Project specific
+data/unclassified/
+*.log
+
+# Data (comment out if you want to track data)
+# data/unclassified/
+# data/generated/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
