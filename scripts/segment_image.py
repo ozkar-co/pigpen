@@ -168,7 +168,8 @@ def segment_characters(binary_image, min_size=20, padding=10, debug=False):
         
         for i, char in enumerate(all_characters):
             axes[i].imshow(char['image'], cmap='gray')
-            line_label = f'L{char.get("line", 0)+1}-C{i+1}' if 'line' in char else f'C{i+1}'
+            line_num = char.get('line', -1) + 1
+            line_label = f'L{line_num}-C{i+1}' if line_num > 0 else f'C{i+1}'
             axes[i].set_title(line_label)
             axes[i].axis('off')
         
