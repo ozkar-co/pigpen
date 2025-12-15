@@ -13,8 +13,6 @@ import numpy as np
 import argparse
 from pathlib import Path
 import random
-import requests
-from io import BytesIO
 
 
 def get_character_image(letter, classified_dir):
@@ -220,39 +218,6 @@ def create_multiline_image(lines, classified_dir, output_path, target_height=100
     return True
 
 
-def download_image(url, output_path):
-    """
-    Descarga una imagen desde una URL.
-    
-    Args:
-        url: URL de la imagen
-        output_path: Ruta donde guardar la imagen
-    
-    Returns:
-        True si se descargó exitosamente, False en caso contrario
-    """
-    try:
-        print(f"Descargando imagen desde {url}...")
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-        
-        # Leer la imagen
-        img_array = np.asarray(bytearray(response.content), dtype=np.uint8)
-        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-        
-        if img is None:
-            print(f"Error: No se pudo decodificar la imagen desde {url}")
-            return False
-        
-        # Guardar la imagen
-        cv2.imwrite(output_path, img)
-        print(f"Imagen descargada: {output_path}")
-        print(f"  Dimensiones: {img.shape[1]}x{img.shape[0]}")
-        return True
-        
-    except Exception as e:
-        print(f"Error al descargar la imagen: {e}")
-        return False
 
 
 def main():
@@ -349,23 +314,6 @@ def main():
     )
     print()
     
-    # 7. Descargar imágenes de ejemplo desde URLs
-    print("7. Descargando imágenes de ejemplo desde URLs...")
-    
-    # Imagen 1 de Stack Exchange
-    download_image(
-        "https://i.sstatic.net/xzEfe.jpg",
-        os.path.join(args.output_dir, 'ejemplo_stackexchange.jpg')
-    )
-    print()
-    
-    # Imagen 2 de Reddit (URL directa de la imagen)
-    download_image(
-        "https://preview.redd.it/doubt-someone-could-solve-this-but-here-it-is-v0-g8row9pb28ac1.jpeg",
-        os.path.join(args.output_dir, 'ejemplo_reddit.jpeg')
-    )
-    print()
-    
     print("=" * 70)
     print("Proceso completado")
     print("=" * 70)
@@ -378,8 +326,7 @@ def main():
     print("  - alfabeto.png: A-Z completo")
     print("  - mensaje_multilinea.png: Mensaje en 3 líneas")
     print("  - frase_corta.png: 'DECODE THIS MESSAGE'")
-    print("  - ejemplo_stackexchange.jpg: Imagen de ejemplo de Stack Exchange")
-    print("  - ejemplo_reddit.jpeg: Imagen de ejemplo de Reddit")
+
 
 
 if __name__ == '__main__':

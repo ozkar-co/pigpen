@@ -29,15 +29,6 @@ mensaje_multilinea.png|MASONIC CIPHER
 
 **Nota:** El mensaje multilínea contiene 3 líneas de texto. El sistema debería poder identificar cada línea por separado.
 
-## Imágenes Externas
-
-Las siguientes imágenes requieren descifrado manual para determinar el texto esperado:
-
-```
-ejemplo_stackexchange.jpg|[PENDIENTE - Descifrar manualmente]
-ejemplo_reddit.jpeg|[PENDIENTE - Descifrar manualmente]
-```
-
 ## Uso en Scripts de Validación
 
 Puedes usar este archivo en scripts de Python para validar automáticamente los resultados:

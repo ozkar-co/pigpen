@@ -47,22 +47,6 @@ Mensaje en múltiples líneas para probar la capacidad del sistema de procesar t
 
 Frase corta para pruebas rápidas de descifrado.
 
-## Imágenes Descargadas (Ejemplos Reales)
-
-### 7. ejemplo_stackexchange.jpg
-**Fuente:** https://i.sstatic.net/xzEfe.jpg
-
-Imagen de ejemplo real del cifrado Pigpen de Stack Exchange. El texto esperado debe ser determinado manualmente al descifrar.
-
-**Nota:** Si el script no pudo descargar esta imagen automáticamente, puedes descargarla manualmente desde la URL y guardarla en `data/prueba/ejemplo_stackexchange.jpg`.
-
-### 8. ejemplo_reddit.jpeg
-**Fuente:** https://preview.redd.it/doubt-someone-could-solve-this-but-here-it-is-v0-g8row9pb28ac1.jpeg
-
-Imagen de ejemplo real del cifrado Pigpen de Reddit. El texto esperado debe ser determinado manualmente al descifrar.
-
-**Nota:** Si el script no pudo descargar esta imagen automáticamente, puedes descargarla manualmente desde la URL y guardarla en `data/prueba/ejemplo_reddit.jpeg`.
-
 ## Cómo Usar Estas Imágenes
 
 ### Generar las Imágenes de Prueba
@@ -140,9 +124,7 @@ data/prueba/
 ├── hello_world.png              # "HELLO WORLD"
 ├── alfabeto.png                 # A-Z completo
 ├── mensaje_multilinea.png       # Mensaje en 3 líneas
-├── frase_corta.png              # "DECODE THIS MESSAGE"
-├── ejemplo_stackexchange.jpg    # Ejemplo de Stack Exchange
-└── ejemplo_reddit.jpeg          # Ejemplo de Reddit
+└── frase_corta.png              # "DECODE THIS MESSAGE"
 ```
 
 ## Requisitos
@@ -151,9 +133,8 @@ Para generar las imágenes de prueba, necesitas:
 - Python 3.8+
 - OpenCV (`opencv-python`)
 - NumPy
-- Requests (para descargar imágenes)
 
 Instalar dependencias:
 ```bash
-pip install opencv-python numpy requests
+pip install opencv-python numpy
 ```
