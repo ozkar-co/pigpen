@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 from datetime import datetime
+from segmentation_utils import detect_text_lines, extract_characters_from_line, CONTENT_THRESHOLD
 
 def parse_arguments():
     """Analiza los argumentos de línea de comandos."""
@@ -52,173 +53,6 @@ def preprocess_image(image):
     
     return binary
 
-def detect_text_lines(binary_image, min_line_height=10, debug=False):
-    """
-    Fase 1: Detecta las líneas o renglones que contienen texto usando proyección horizontal.
-    
-    Args:
-        binary_image: Imagen binaria preprocesada
-        min_line_height: Altura mínima de una línea de texto
-        debug: Si es True, muestra imágenes de depuración
-        
-    Returns:
-        Lista de tuplas (y_inicio, y_fin) que representan las líneas de texto
-    """
-    # Calcular la proyección horizontal (suma de píxeles por fila)
-    horizontal_projection = np.sum(binary_image, axis=1)
-    
-    # Normalizar la proyección
-    if horizontal_projection.max() > 0:
-        horizontal_projection = horizontal_projection / horizontal_projection.max()
-    
-    # Encontrar regiones con contenido (umbral adaptativo)
-    threshold = 0.1  # Umbral para detectar presencia de contenido
-    content_rows = horizontal_projection > threshold
-    
-    # Encontrar límites de las líneas
-    lines = []
-    in_line = False
-    line_start = 0
-    
-    for i, has_content in enumerate(content_rows):
-        if has_content and not in_line:
-            # Inicio de una nueva línea
-            line_start = i
-            in_line = True
-        elif not has_content and in_line:
-            # Fin de la línea actual
-            line_end = i
-            if line_end - line_start >= min_line_height:
-                lines.append((line_start, line_end))
-            in_line = False
-    
-    # Manejar el caso donde la línea llega hasta el final
-    if in_line:
-        line_end = len(content_rows)
-        if line_end - line_start >= min_line_height:
-            lines.append((line_start, line_end))
-    
-    if debug:
-        plt.figure(figsize=(12, 6))
-        plt.subplot(2, 1, 1)
-        plt.imshow(binary_image, cmap='gray')
-        plt.title('Imagen Binaria')
-        for y_start, y_end in lines:
-            plt.axhline(y=y_start, color='r', linestyle='--', linewidth=1)
-            plt.axhline(y=y_end, color='r', linestyle='--', linewidth=1)
-        plt.axis('off')
-        
-        plt.subplot(2, 1, 2)
-        plt.plot(horizontal_projection, range(len(horizontal_projection)))
-        plt.gca().invert_yaxis()
-        plt.title('Proyección Horizontal')
-        plt.xlabel('Densidad de píxeles (normalizada)')
-        plt.ylabel('Fila')
-        for y_start, y_end in lines:
-            plt.axhline(y=y_start, color='r', linestyle='--', linewidth=1)
-            plt.axhline(y=y_end, color='r', linestyle='--', linewidth=1)
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.show()
-    
-    return lines
-
-def extract_characters_from_line(line_image, min_char_width=10, padding=5, debug=False):
-    """
-    Fase 2: Extrae caracteres individuales de una línea de texto usando proyección vertical.
-    Asume que los caracteres son aproximadamente cuadrados.
-    
-    Args:
-        line_image: Imagen binaria de una línea de texto
-        min_char_width: Ancho mínimo de un carácter
-        padding: Padding alrededor de cada carácter
-        debug: Si es True, muestra imágenes de depuración
-        
-    Returns:
-        Lista de imágenes de caracteres segmentados
-    """
-    # Calcular la proyección vertical (suma de píxeles por columna)
-    vertical_projection = np.sum(line_image, axis=0)
-    
-    # Normalizar la proyección
-    if vertical_projection.max() > 0:
-        vertical_projection = vertical_projection / vertical_projection.max()
-    
-    # Encontrar regiones con contenido
-    threshold = 0.1  # Umbral para detectar presencia de contenido
-    content_cols = vertical_projection > threshold
-    
-    # Encontrar límites de los caracteres
-    char_regions = []
-    in_char = False
-    char_start = 0
-    
-    for i, has_content in enumerate(content_cols):
-        if has_content and not in_char:
-            # Inicio de un nuevo carácter
-            char_start = i
-            in_char = True
-        elif not has_content and in_char:
-            # Fin del carácter actual
-            char_end = i
-            if char_end - char_start >= min_char_width:
-                char_regions.append((char_start, char_end))
-            in_char = False
-    
-    # Manejar el caso donde el carácter llega hasta el final
-    if in_char:
-        char_end = len(content_cols)
-        if char_end - char_start >= min_char_width:
-            char_regions.append((char_start, char_end))
-    
-    # Extraer caracteres con padding
-    characters = []
-    line_height = line_image.shape[0]
-    
-    for x_start, x_end in char_regions:
-        # Calcular el ancho del carácter
-        char_width = x_end - x_start
-        
-        # Asumir que los caracteres son aproximadamente cuadrados
-        # Usar el tamaño promedio entre ancho y alto para hacer el recorte
-        expected_size = max(char_width, line_height)
-        
-        # Ajustar para mantener proporciones cuadradas si es necesario
-        # (esto ayuda a mantener la forma original del carácter)
-        
-        # Añadir padding
-        x_with_padding_start = max(0, x_start - padding)
-        x_with_padding_end = min(line_image.shape[1], x_end + padding)
-        
-        # Extraer el carácter
-        char_img = line_image[:, x_with_padding_start:x_with_padding_end]
-        
-        # Asegurarse de que la imagen no está vacía
-        if char_img.size > 0 and char_img.any():
-            characters.append(char_img)
-    
-    if debug and characters:
-        fig, axes = plt.subplots(1, len(characters) + 1, figsize=(15, 3))
-        
-        # Mostrar la línea completa con regiones marcadas
-        debug_line = cv2.cvtColor(line_image.copy(), cv2.COLOR_GRAY2BGR)
-        for x_start, x_end in char_regions:
-            cv2.rectangle(debug_line, (x_start, 0), (x_end, line_height), (0, 255, 0), 2)
-        axes[0].imshow(debug_line)
-        axes[0].set_title('Línea con caracteres detectados')
-        axes[0].axis('off')
-        
-        # Mostrar cada carácter extraído
-        for i, char in enumerate(characters):
-            axes[i+1].imshow(char, cmap='gray')
-            axes[i+1].set_title(f'Char {i+1}')
-            axes[i+1].axis('off')
-        
-        plt.tight_layout()
-        plt.show()
-    
-    return characters
-
 def segment_characters(binary_image, min_size=20, padding=10, debug=False):
     """
     Segmenta los caracteres individuales de la imagen binaria usando un enfoque de dos fases:
@@ -235,7 +69,7 @@ def segment_characters(binary_image, min_size=20, padding=10, debug=False):
         Lista de imágenes de caracteres segmentados con sus coordenadas
     """
     # Fase 1: Detectar líneas de texto
-    lines = detect_text_lines(binary_image, min_line_height=min_size, debug=debug)
+    lines = detect_text_lines(binary_image, min_line_height=min_size, threshold=CONTENT_THRESHOLD)
     
     if not lines:
         print("No se detectaron líneas de texto.")
@@ -250,23 +84,26 @@ def segment_characters(binary_image, min_size=20, padding=10, debug=False):
         # Extraer la región de la línea
         line_image = binary_image[y_start:y_end, :]
         
-        # Extraer caracteres de esta línea
-        line_characters = extract_characters_from_line(
+        # Extraer caracteres de esta línea usando proyección vertical
+        char_regions = extract_characters_from_line(
             line_image, 
+            y_offset=y_start,
             min_char_width=min_size // 2,
             padding=padding,
-            debug=debug
+            threshold=CONTENT_THRESHOLD
         )
         
-        # Guardar los caracteres con sus coordenadas originales
-        for char_img in line_characters:
-            # Calcular las coordenadas en la imagen original
-            # (necesitamos estimar la posición x basándonos en el orden)
-            all_characters.append({
-                'image': char_img,
-                'line': line_idx,
-                'bbox': (y_start, 0, y_end, char_img.shape[1])  # Aproximado
-            })
+        # Guardar los caracteres con sus coordenadas
+        for x, y, w, h in char_regions:
+            # Extraer la imagen del carácter
+            char_img = binary_image[y:y+h, x:x+w]
+            
+            if char_img.size > 0 and char_img.any():
+                all_characters.append({
+                    'image': char_img,
+                    'line': line_idx,
+                    'bbox': (y, x, y+h, x+w)  # (minr, minc, maxr, maxc) format
+                })
     
     if debug and all_characters:
         # Visualizar todos los caracteres detectados
@@ -276,6 +113,11 @@ def segment_characters(binary_image, min_size=20, padding=10, debug=False):
         for y_start, y_end in lines:
             cv2.line(debug_img, (0, y_start), (binary_image.shape[1], y_start), (255, 0, 0), 2)
             cv2.line(debug_img, (0, y_end), (binary_image.shape[1], y_end), (255, 0, 0), 2)
+        
+        # Dibujar rectángulos de caracteres
+        for char in all_characters:
+            minr, minc, maxr, maxc = char['bbox']
+            cv2.rectangle(debug_img, (minc, minr), (maxc, maxr), (0, 255, 0), 2)
         
         plt.figure(figsize=(12, 8))
         plt.imshow(debug_img)
