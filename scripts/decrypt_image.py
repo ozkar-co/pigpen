@@ -18,6 +18,12 @@ import torch.nn as nn
 from torchvision import transforms, models
 from PIL import Image, ImageDraw, ImageFont
 
+# Try to import from the same directory
+try:
+    from segmentation_utils import detect_text_lines, extract_characters_from_line, CONTENT_THRESHOLD
+except ImportError:
+    from scripts.segmentation_utils import detect_text_lines, extract_characters_from_line, CONTENT_THRESHOLD
+
 # Mapa de conversión de índices a letras
 IDX_TO_CHAR = {i: chr(65 + i) for i in range(26)}  # A-Z
 
@@ -121,27 +127,64 @@ def preprocess_image(image_path, threshold=0.5):
     return image, binary
 
 def find_characters(binary_image, min_area=100, padding=10):
-    """Encuentra los caracteres en la imagen binarizada."""
-    # Encontrar contornos
-    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    """
+    Encuentra los caracteres en la imagen binarizada usando un enfoque de dos fases:
+    Fase 1: Detecta líneas de texto
+    Fase 2: Extrae caracteres de cada línea
     
-    # Filtrar contornos por área y obtener bounding boxes
-    char_regions = []
-    for contour in contours:
-        area = cv2.contourArea(contour)
-        if area >= min_area:
-            x, y, w, h = cv2.boundingRect(contour)
-            # Añadir padding
-            x = max(0, x - padding)
-            y = max(0, y - padding)
-            w = min(binary_image.shape[1] - x, w + 2 * padding)
-            h = min(binary_image.shape[0] - y, h + 2 * padding)
-            char_regions.append((x, y, w, h))
+    Returns:
+        Lista de tuplas (x, y, w, h) que representan las regiones de caracteres:
+        - x: coordenada x (columna) del inicio del carácter
+        - y: coordenada y (fila) del inicio del carácter  
+        - w: ancho del carácter
+        - h: alto del carácter
+    """
+    # Calcular el tamaño mínimo de línea basado en el área mínima
+    min_line_height = int(np.sqrt(min_area))
     
-    # Ordenar regiones de izquierda a derecha
-    char_regions.sort(key=lambda r: r[0])
+    # Fase 1: Detectar líneas de texto
+    lines = detect_text_lines(binary_image, min_line_height=min_line_height, threshold=CONTENT_THRESHOLD)
     
-    return char_regions
+    if not lines:
+        # Si no se detectan líneas, usar el método de contornos como fallback
+        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        char_regions = []
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area >= min_area:
+                x, y, w, h = cv2.boundingRect(contour)
+                # Añadir padding
+                x = max(0, x - padding)
+                y = max(0, y - padding)
+                w = min(binary_image.shape[1] - x, w + 2 * padding)
+                h = min(binary_image.shape[0] - y, h + 2 * padding)
+                char_regions.append((x, y, w, h))
+        # Ordenar regiones de izquierda a derecha
+        char_regions.sort(key=lambda r: r[0])
+        return char_regions
+    
+    # Fase 2: Extraer caracteres de cada línea
+    all_char_regions = []
+    
+    for y_start, y_end in lines:
+        # Extraer la región de la línea
+        line_image = binary_image[y_start:y_end, :]
+        
+        # Extraer caracteres de esta línea
+        line_char_regions = extract_characters_from_line(
+            line_image,
+            y_offset=y_start,
+            min_char_width=min_line_height // 2,
+            padding=padding,
+            threshold=CONTENT_THRESHOLD
+        )
+        
+        all_char_regions.extend(line_char_regions)
+    
+    # Ordenar por línea (y) y luego por posición horizontal (x)
+    all_char_regions.sort(key=lambda r: (r[1], r[0]))
+    
+    return all_char_regions
 
 def predict_character(model, image_tensor, classes, device):
     """Predice el carácter en una imagen tensor."""

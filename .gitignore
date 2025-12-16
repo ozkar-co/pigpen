@@ -25,17 +25,20 @@ MANIFEST
 
 # Virtual environments
 venv/
-ENV/
 env/
+ENV/
 .venv
 
-# IDE
+# IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# OS
 .DS_Store
+Thumbs.db
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -52,6 +55,10 @@ logs/
 runs/
 checkpoints/
 
+# Project specific
+data/unclassified/
+*.log
+
 # Data (comment out if you want to track data)
 # data/unclassified/
 # data/generated/
@@ -60,7 +67,3 @@ checkpoints/
 tmp/
 temp/
 *.tmp
-
-# OS
-.DS_Store
-Thumbs.db
